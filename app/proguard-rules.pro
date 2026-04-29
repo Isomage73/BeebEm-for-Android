@@ -1,0 +1,1 @@
+# BeebDroid ProGuard rules

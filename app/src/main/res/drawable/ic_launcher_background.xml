@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Deep navy background — evokes a darkened BBC Micro machine. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FF000000" />
+    <solid android:color="#0D0F1E"/>
 </shape>

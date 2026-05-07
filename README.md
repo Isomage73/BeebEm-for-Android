@@ -1,4 +1,4 @@
-# BeebDroid
+# BeebEm for Android
 
 An Android port of [BeebEm](https://github.com/stardot/beebem-windows), the
 BBC Micro Model B emulator. The original BeebEm core runs as native C++ via

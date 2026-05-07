@@ -113,6 +113,9 @@ The Android shim (`app/src/main/cpp/platform/`, `cpp/jni/`,
 
 - **David Alan Gilbert**, **Mike Wyatt**, **Richard Gellman** and
   contributors — the BeebEm emulator
+- **Peter Johnson** — for the original macOS port of BeebEm
+  ([beebem-macos](https://github.com/0x1337c0d3/beebem-macos)), which
+  this Android port is built on top of, and for all his patient guidance
 - **stairwaytohell.com** and **bbcmicro.co.uk** for the BBC software
   archives
 - BBC Micro Model B © Acorn Computers / ARM

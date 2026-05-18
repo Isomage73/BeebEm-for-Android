@@ -20,7 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// BBC key: label, BBC matrix row/col, width relative to a standard key, sticky behaviour,
+// BBC key: label, BBC matrix row/col, width relative to a standard key,
 // and the character produced when the Shift key is held (shown on the key when Shift is active).
 // row == -99 signals BREAK (uses nativeBreakKey).
 private data class BbcKey(
@@ -28,7 +28,6 @@ private data class BbcKey(
     val row: Int,
     val col: Int,
     val weight: Float = 1f,
-    val isSticky: Boolean = false,
     val shiftLabel: String = "",   // shown on key face when Shift is active
 )
 
@@ -125,38 +124,54 @@ private val SPECIAL_LABELS = setOf("ESC", "TAB", "DEL", "RET", "CAPS", "SHF", "C
 private fun isFunctionKey(key: BbcKey) =
     key.row == -99 || (key.label.length == 2 && key.label[0] == 'f' && key.label[1].isDigit())
 
+private fun isModifierKey(key: BbcKey) = key.label == "SHF" || key.label == "CTL"
+
 private fun keyColors(key: BbcKey, isActive: Boolean): Triple<Color, Color, Color> {
     if (isActive) return Triple(KEY_ACTIVE_BG, KEY_ACTIVE_LIT, KEY_TEXT_DARK)
     if (isFunctionKey(key)) return Triple(KEY_RED_BG, KEY_RED_BG_LIT, KEY_TEXT_LIGHT)
-    if (key.label in SPECIAL_LABELS || key.isSticky) return Triple(KEY_GRAY_BG, KEY_GRAY_BG_LIT, KEY_TEXT_DARK)
+    if (key.label in SPECIAL_LABELS) return Triple(KEY_GRAY_BG, KEY_GRAY_BG_LIT, KEY_TEXT_DARK)
     return Triple(KEY_CREAM_BG, KEY_CREAM_BG_LIT, KEY_TEXT_DARK)
 }
 
-private fun stickyId(row: Int, col: Int) = row * 10 + col
-
 @Composable
 fun BbcKeyboard(modifier: Modifier = Modifier) {
-    val stickyState = remember { mutableStateMapOf<Int, Boolean>() }
+    // Press counters allow either of the two SHF keys (and multi-touch in general)
+    // to keep the modifier latched while held — only the 0→1 and 1→0 transitions
+    // dispatch nativeKeyDown/Up, so the BBC matrix sees a single clean press.
+    var shiftPressCount by remember { mutableStateOf(0) }
+    var ctrlPressCount  by remember { mutableStateOf(0) }
 
-    fun isStickyOn(key: BbcKey): Boolean =
-        key.isSticky && stickyState[stickyId(key.row, key.col)] == true
+    val shiftActive = shiftPressCount > 0
+    val ctrlActive  = ctrlPressCount  > 0
 
-    val shiftActive = stickyState[stickyId(0, 0)] == true
+    fun isActive(key: BbcKey): Boolean = when (key.label) {
+        "SHF" -> shiftActive
+        "CTL" -> ctrlActive
+        else  -> false
+    }
 
-    fun onKeyPress(key: BbcKey) {
-        if (key.row == -99) {
-            BeebEmNative.nativeBreakKey(false)
-            return
+    fun onModifierPress(label: String) {
+        when (label) {
+            "SHF" -> {
+                if (shiftPressCount == 0) BeebEmNative.nativeKeyDown(0, 0)
+                shiftPressCount++
+            }
+            "CTL" -> {
+                if (ctrlPressCount == 0) BeebEmNative.nativeKeyDown(0, 1)
+                ctrlPressCount++
+            }
         }
-        if (key.isSticky) {
-            val id = stickyId(key.row, key.col)
-            val wasOn = stickyState[id] == true
-            if (wasOn) {
-                BeebEmNative.nativeKeyUp(key.row, key.col)
-                stickyState[id] = false
-            } else {
-                BeebEmNative.nativeKeyDown(key.row, key.col)
-                stickyState[id] = true
+    }
+
+    fun onModifierRelease(label: String) {
+        when (label) {
+            "SHF" -> {
+                shiftPressCount = (shiftPressCount - 1).coerceAtLeast(0)
+                if (shiftPressCount == 0) BeebEmNative.nativeKeyUp(0, 0)
+            }
+            "CTL" -> {
+                ctrlPressCount = (ctrlPressCount - 1).coerceAtLeast(0)
+                if (ctrlPressCount == 0) BeebEmNative.nativeKeyUp(0, 1)
             }
         }
     }
@@ -169,8 +184,9 @@ fun BbcKeyboard(modifier: Modifier = Modifier) {
             KeyRow(
                 keys = row,
                 shiftActive = shiftActive,
-                isStickyOn = ::isStickyOn,
-                onStickyToggle = ::onKeyPress,
+                isActive = ::isActive,
+                onModifierPress = ::onModifierPress,
+                onModifierRelease = ::onModifierRelease,
             )
         }
     }
@@ -180,8 +196,9 @@ fun BbcKeyboard(modifier: Modifier = Modifier) {
 private fun KeyRow(
     keys: List<BbcKey>,
     shiftActive: Boolean,
-    isStickyOn: (BbcKey) -> Boolean,
-    onStickyToggle: (BbcKey) -> Unit,
+    isActive: (BbcKey) -> Boolean,
+    onModifierPress: (String) -> Unit,
+    onModifierRelease: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -192,9 +209,10 @@ private fun KeyRow(
         for (key in keys) {
             KeyButton(
                 key = key,
-                isActive = isStickyOn(key),
+                isActive = isActive(key),
                 shiftActive = shiftActive,
-                onStickyToggle = onStickyToggle,
+                onModifierPress = onModifierPress,
+                onModifierRelease = onModifierRelease,
                 modifier = Modifier.weight(key.weight),
             )
         }
@@ -206,7 +224,8 @@ private fun KeyButton(
     key: BbcKey,
     isActive: Boolean,
     shiftActive: Boolean,
-    onStickyToggle: (BbcKey) -> Unit,
+    onModifierPress: (String) -> Unit,
+    onModifierRelease: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val (bgDark, bgLight, textColor) = keyColors(key, isActive)
@@ -236,8 +255,17 @@ private fun KeyButton(
             .pointerInput(key) {
                 detectTapGestures(
                     onPress = { _ ->
-                        if (key.isSticky || key.row == -99) {
-                            onStickyToggle(key)
+                        if (key.row == -99) {
+                            BeebEmNative.nativeBreakKey(false)
+                            return@detectTapGestures
+                        }
+                        if (isModifierKey(key)) {
+                            onModifierPress(key.label)
+                            try {
+                                awaitRelease()
+                            } finally {
+                                onModifierRelease(key.label)
+                            }
                         } else {
                             BeebEmNative.nativeKeyDown(key.row, key.col)
                             try {

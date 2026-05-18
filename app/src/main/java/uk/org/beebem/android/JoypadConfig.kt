@@ -6,6 +6,20 @@ import java.io.File
 
 data class JoypadKey(val row: Int, val col: Int, val label: String, val shifted: Boolean = false)
 
+// Free position of a joypad button — top-left in dp, relative to the joypad
+// content area (inside the screen's padding). The user drags buttons to
+// arbitrary positions and the renderer rejects releases that overlap.
+data class FreePos(val xDp: Float, val yDp: Float)
+
+// Per-button positions, plus the set of buttons the user has hidden via
+// double-tap in CFG mode. An empty positions map falls back to
+// defaultJoypadLayout() at render time, so older saved configs and fresh
+// installs both work without migration.
+data class JoypadLayout(
+    val positions: Map<String, FreePos> = emptyMap(),
+    val hidden:    Set<String>          = emptySet(),
+)
+
 data class JoypadMapping(
     val up:    JoypadKey,
     val down:  JoypadKey,
@@ -14,7 +28,34 @@ data class JoypadMapping(
     val fire1: JoypadKey,
     val fire2: JoypadKey,
     val fire3: JoypadKey,
+    val layout: JoypadLayout = JoypadLayout(),
 )
+
+// The seven on-screen joypad buttons. Order is purely for iteration —
+// position on the grid is stored in JoypadLayout.
+val JOYPAD_BUTTON_IDS = listOf("up", "down", "left", "right", "fire1", "fire2", "fire3")
+
+// Default positions for the given joypad content-area dimensions (in dp).
+// D-pad inverted-T at bottom-left; fire L-cluster at bottom-right; gap in the
+// middle leaves room for the CFG toggle. All positions are clamped in-bounds.
+fun defaultJoypadLayout(areaWidthDp: Float, areaHeightDp: Float, buttonSizeDp: Float): JoypadLayout {
+    val gap     = 6f
+    val step    = buttonSizeDp + gap
+    val topY    = 0f
+    val bottomY = (areaHeightDp - buttonSizeDp).coerceAtLeast(0f)
+    val rightX  = (areaWidthDp  - buttonSizeDp).coerceAtLeast(0f)
+    fun clampX(x: Float) = x.coerceIn(0f, rightX)
+    fun clampY(y: Float) = y.coerceIn(0f, bottomY)
+    return JoypadLayout(mapOf(
+        "up"    to FreePos(clampX(step),          clampY(topY)),
+        "left"  to FreePos(clampX(0f),            clampY(bottomY)),
+        "down"  to FreePos(clampX(step),          clampY(bottomY)),
+        "right" to FreePos(clampX(2 * step),      clampY(bottomY)),
+        "fire1" to FreePos(clampX(rightX - step), clampY(topY)),
+        "fire2" to FreePos(clampX(rightX - step), clampY(bottomY)),
+        "fire3" to FreePos(clampX(rightX),        clampY(bottomY)),
+    ))
+}
 
 val DefaultJoypadMapping = JoypadMapping(
     up    = JoypadKey(3, 9, "↑"),
@@ -131,11 +172,23 @@ object JoypadConfigManager {
         put("fire1", keyToJson(m.fire1))
         put("fire2", keyToJson(m.fire2))
         put("fire3", keyToJson(m.fire3))
+        if (m.layout.positions.isNotEmpty()) put("layout", layoutToJson(m.layout))
     }
 
     private fun keyToJson(k: JoypadKey) = JSONObject().apply {
         put("row", k.row); put("col", k.col); put("label", k.label)
         if (k.shifted) put("shifted", true)
+    }
+
+    private fun layoutToJson(l: JoypadLayout) = JSONObject().apply {
+        val pos = JSONObject()
+        l.positions.forEach { (id, p) ->
+            pos.put(id, JSONObject().apply { put("x", p.xDp.toDouble()); put("y", p.yDp.toDouble()) })
+        }
+        put("positions", pos)
+        if (l.hidden.isNotEmpty()) {
+            put("hidden", org.json.JSONArray().apply { l.hidden.forEach { put(it) } })
+        }
     }
 
     private fun jsonToMapping(obj: JSONObject) = JoypadMapping(
@@ -146,7 +199,31 @@ object JoypadConfigManager {
         fire1 = jsonToKey(obj.getJSONObject("fire1")),
         fire2 = jsonToKey(obj.getJSONObject("fire2")),
         fire3 = jsonToKey(obj.getJSONObject("fire3")),
+        layout = obj.optJSONObject("layout")?.let { jsonToLayout(it) } ?: JoypadLayout(),
     )
+
+    private fun jsonToLayout(obj: JSONObject): JoypadLayout {
+        // Accepts the current shape (x/y dp), and best-effort migrates two prior
+        // shapes encountered during dev:
+        //   { positions: { id: {col, row} } }   — first grid-snap pass
+        //   { id: {col, row} }                  — even earlier inline grid form
+        // Old grid coords are converted using the previous 68dp cell size + 3dp
+        // inset, which should land buttons close to where the user expects.
+        val posSource = obj.optJSONObject("positions") ?: obj
+        val positions = mutableMapOf<String, FreePos>()
+        posSource.keys().forEach { id ->
+            val v = posSource.opt(id) as? JSONObject ?: return@forEach
+            when {
+                v.has("x") && v.has("y")     -> positions[id] = FreePos(v.getDouble("x").toFloat(), v.getDouble("y").toFloat())
+                v.has("col") && v.has("row") -> positions[id] = FreePos(v.getInt("col") * 68f + 3f, v.getInt("row") * 68f + 3f)
+            }
+        }
+        val hidden = mutableSetOf<String>()
+        obj.optJSONArray("hidden")?.let { arr ->
+            for (i in 0 until arr.length()) hidden.add(arr.getString(i))
+        }
+        return JoypadLayout(positions, hidden)
+    }
 
     private fun jsonToKey(obj: JSONObject) = JoypadKey(
         row     = obj.getInt("row"),

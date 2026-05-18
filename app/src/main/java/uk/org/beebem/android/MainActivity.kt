@@ -28,7 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uk.org.beebem.android.ui.theme.BeebDroidTheme
+import uk.org.beebem.android.ui.theme.BeebEmForAndroidTheme
 import java.io.File
 
 enum class InputMode { NONE, KEYBOARD, JOYPAD }
@@ -47,10 +47,10 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val ok = BeebEmNative.nativeInit(assets, filesDir.absolutePath)
-        Log.i("BeebDroid", "nativeInit returned $ok")
+        Log.i("BeebEm-For-Android", "nativeInit returned $ok")
 
         setContent {
-            BeebDroidTheme {
+            BeebEmForAndroidTheme {
                 if (ok) {
                     EmulatorLayout(onViewCreated = { glView = it })
                 }

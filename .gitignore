@@ -21,6 +21,5 @@ Thumbs.db
 
 # Local notes / dev artefacts not for distribution
 *.log
-/beebdroid3 build.txt
 /Screenshot_*.jpg
 /Screenshot_*.png

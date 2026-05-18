@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 private val DarkColorScheme = darkColorScheme()
 
 @Composable
-fun BeebDroidTheme(content: @Composable () -> Unit) {
+fun BeebEmForAndroidTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
         content = content

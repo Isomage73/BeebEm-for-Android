@@ -4,7 +4,7 @@ An Android port of [BeebEm](https://github.com/stardot/beebem-windows), the
 BBC Micro Model B emulator. The original BeebEm core runs as native C++ via
 JNI; the UI is Jetpack Compose.
 
-![BeebDroid running Chuckie Egg](docs/chuckie.png)
+![BeebEm-For-Android running Chuckie Egg](docs/chuckie.png)
 
 ## Features
 
@@ -101,7 +101,7 @@ wall-clock pacing and pending-op queues for thread-safe BBC state mutation).
 
 ## License
 
-BeebDroid inherits the BeebEm license: **GPL v2 or later**. See the
+BeebEm-For-Android inherits the BeebEm license: **GPL v2 or later**. See the
 copyright headers on the files in `app/src/main/cpp/core/`. The BBC Micro
 system ROMs in `app/src/main/assets/BeebData/BeebFile/BBC/` are © Acorn /
 ARM and are bundled here following the same convention as upstream BeebEm.

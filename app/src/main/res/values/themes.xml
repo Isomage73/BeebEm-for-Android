@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.BeebDroid" parent="android:Theme.Black.NoTitleBar" />
+    <style name="Theme.BeebEmForAndroid" parent="android:Theme.Black.NoTitleBar" />
 </resources>

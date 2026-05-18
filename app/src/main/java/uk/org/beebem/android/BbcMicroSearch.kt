@@ -11,7 +11,7 @@ import java.net.URLEncoder
 import java.util.zip.ZipInputStream
 
 private const val BASE = "https://www.bbcmicro.co.uk"
-private const val UA   = "BeebDroid/1.0 (Android; bbcmicro.co.uk search)"
+private const val UA   = "BeebEm-For-Android/1.0 (Android; bbcmicro.co.uk search)"
 
 data class BbcSearchResult(
     val id:        Int,

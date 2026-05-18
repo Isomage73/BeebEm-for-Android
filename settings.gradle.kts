@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BeebDroid"
+rootProject.name = "BeebEm-For-Android"
 include(":app")

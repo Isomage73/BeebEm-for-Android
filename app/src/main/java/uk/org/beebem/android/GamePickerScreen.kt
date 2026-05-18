@@ -84,7 +84,7 @@ fun GamePickerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "BBC Games",
+                    "BBC Games stairwaytohell.com",
                     color = ACCENT,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
